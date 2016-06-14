@@ -1,0 +1,506 @@
+/*
+ * @brief Vitual communication port example
+ *
+ * @note
+ * Copyright(C) NXP Semiconductors, 2013
+ * All rights reserved.
+ *
+ * @par
+ * Software that is described herein is for illustrative purposes only
+ * which provides customers with programming information regarding the
+ * LPC products.  This software is supplied "AS IS" without any warranties of
+ * any kind, and NXP Semiconductors and its licensor disclaim any and
+ * all warranties, express or implied, including all implied warranties of
+ * merchantability, fitness for a particular purpose and non-infringement of
+ * intellectual property rights.  NXP Semiconductors assumes no responsibility
+ * or liability for the use of the software, conveys no license or rights under any
+ * patent, copyright, mask work right, or any other intellectual property rights in
+ * or to any products. NXP Semiconductors reserves the right to make changes
+ * in the software without notification. NXP Semiconductors also makes no
+ * representation or warranty that such application will be suitable for the
+ * specified use without further testing or modification.
+ *
+ * @par
+ * Permission to use, copy, modify, and distribute this software and its
+ * documentation is hereby granted, under NXP Semiconductors' and its
+ * licensor's relevant copyrights in the software, without fee, provided that it
+ * is used in conjunction with NXP Semiconductors microcontrollers.  This
+ * copyright, permission, and disclaimer notice must appear in all copies of
+ * this code.
+ */
+
+#include "board.h"
+#include <stdio.h>
+#include <string.h>
+#include "app_usbd_cfg.h"
+#include "cdc_vcom.h"
+#include "relay.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include <limits.h>
+
+/* Application specific configuration options. */
+#include "FreeRTOSConfig.h"
+
+//#include "ESP8266pro.h"
+//#include "ESP8266proClient.h"
+
+#define ssid         "PoldenFX"
+#define pass         "1Polden4FX"
+#define serverIP     "192.168.0.73"
+#define serverPort   "55056"
+
+/*****************************************************************************
+ * Private types/enumerations/variables
+ ****************************************************************************/
+
+/*****************************************************************************
+ * Public types/enumerations/variables
+ ****************************************************************************/
+
+static USBD_HANDLE_T g_hUsb;
+
+
+extern const  USBD_HW_API_T hw_api;
+extern const  USBD_CORE_API_T core_api;
+extern const  USBD_CDC_API_T cdc_api;
+/* Since this example only uses CDC class link functions for that clas only */
+static const  USBD_API_T g_usbApi = {
+	&hw_api,
+	&core_api,
+	0,
+	0,
+	0,
+	&cdc_api,
+	0,
+	0x02221101,
+};
+
+const  USBD_API_T *g_pUsbApi = &g_usbApi;
+
+TaskHandle_t  relayTaskHandle;
+
+/*****************************************************************************
+ * Private functions
+ ****************************************************************************/
+
+/* Initialize pin and clocks for USB0/USB1 port */
+static void usb_pin_clk_init(void)
+{
+	/* enable USB main clock */
+	Chip_Clock_SetUSBClockSource(SYSCTL_USBCLKSRC_PLLOUT, 1);
+	/* Enable AHB clock to the USB block and USB RAM. */
+	Chip_Clock_EnablePeriphClock(SYSCTL_CLOCK_USB);
+	Chip_Clock_EnablePeriphClock(SYSCTL_CLOCK_USBRAM);
+	/* power UP USB Phy */
+	Chip_SYSCTL_PowerUp(SYSCTL_POWERDOWN_USBPAD_PD);
+}
+
+/**
+ * @brief	Handle interrupt from USB0
+ * @return	Nothing
+ */
+void USB_IRQHandler(void)
+{
+	USBD_API->hw->ISR(g_hUsb);
+}
+
+/* Find the address of interface descriptor for given class type. */
+USB_INTERFACE_DESCRIPTOR *find_IntfDesc(const uint8_t *pDesc, uint32_t intfClass)
+{
+	USB_COMMON_DESCRIPTOR *pD;
+	USB_INTERFACE_DESCRIPTOR *pIntfDesc = 0;
+	uint32_t next_desc_adr;
+
+	pD = (USB_COMMON_DESCRIPTOR *) pDesc;
+	next_desc_adr = (uint32_t) pDesc;
+
+	while (pD->bLength) {
+		/* is it interface descriptor */
+		if (pD->bDescriptorType == USB_INTERFACE_DESCRIPTOR_TYPE) {
+
+			pIntfDesc = (USB_INTERFACE_DESCRIPTOR *) pD;
+			/* did we find the right interface descriptor */
+			if (pIntfDesc->bInterfaceClass == intfClass) {
+				break;
+			}
+		}
+		pIntfDesc = 0;
+		next_desc_adr = (uint32_t) pD + pD->bLength;
+		pD = (USB_COMMON_DESCRIPTOR *) next_desc_adr;
+	}
+
+	return pIntfDesc;
+}
+
+void initCdcVcom()
+{
+	USBD_API_INIT_PARAM_T usb_param;
+	USB_CORE_DESCS_T desc;
+	ErrorCode_t ret = LPC_OK;
+	/* enable clocks and pinmux */
+	usb_pin_clk_init();
+	/* initilize call back structures */
+	memset((void *) &usb_param, 0, sizeof(USBD_API_INIT_PARAM_T));
+	usb_param.usb_reg_base = LPC_USB0_BASE;
+	usb_param.max_num_ep = 3;
+	usb_param.mem_base = USB_STACK_MEM_BASE;
+	usb_param.mem_size = USB_STACK_MEM_SIZE;
+
+	/* Set the USB descriptors */
+	desc.device_desc = (uint8_t *) &USB_DeviceDescriptor[0];
+	desc.string_desc = (uint8_t *) &USB_StringDescriptor[0];
+	/* Note, to pass USBCV test full-speed only devices should have both
+	   descriptor arrays point to same location and device_qualifier set to 0.
+	 */
+	desc.high_speed_desc = (uint8_t *) &USB_FsConfigDescriptor[0];
+	desc.full_speed_desc = (uint8_t *) &USB_FsConfigDescriptor[0];
+	desc.device_qualifier = 0;
+
+	/* USB Initialization */
+	ret = USBD_API->hw->Init(&g_hUsb, &desc, &usb_param);
+	if (ret == LPC_OK) {
+
+		/* Init VCOM interface */
+		ret = vcom_init(g_hUsb, &desc, &usb_param);
+		if (ret == LPC_OK) {
+			/*  enable USB interrrupts */
+			NVIC_EnableIRQ(USB0_IRQn);
+			/* now connect */
+			USBD_API->hw->Connect(g_hUsb, 1);
+		}
+
+	}
+
+	DEBUGSTR("USB CDC class based virtual Comm port example!\r\n");
+}
+
+/* Transmit and receive ring buffers */
+STATIC RINGBUFF_T txring, rxring;
+
+/* Transmit and receive ring buffer sizes */
+#define UART_SRB_SIZE 128	/* Send */
+#define UART_RRB_SIZE 128	/* Receive */
+
+/* Transmit and receive buffers */
+static uint8_t rxbuff[UART_RRB_SIZE], txbuff[UART_SRB_SIZE];
+
+void uartPrintf(const char str[])
+{
+	Chip_UART_SendRB(LPC_USART, &txring, str, strlen(str));
+}
+
+void vcomPrintf(const char str[])
+{
+	if (vcom_connected() != 0) {
+		vcom_write(str, strlen(str));
+	}
+}
+
+const char inst1[] = "LPC11xx UART example using ring buffers\r\n";
+const char inst2[] = "Press a key to echo it back or ESC to quit\r\n";
+
+void UART_IRQHandler(void)
+{
+	/* Want to handle any errors? Do it here. */
+
+	/* Use default ring buffer handler. Override this with your own
+	   code if you need more capability. */
+	Chip_UART_IRQRBHandler(LPC_USART, &rxring, &txring);
+}
+
+void initUart()
+{
+	Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 18, IOCON_FUNC1 | IOCON_MODE_INACT);	/* PIO0_18 used for RXD */
+	Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 19, IOCON_FUNC1 | IOCON_MODE_INACT);	/* PIO0_19 used for TXD */
+
+	/* Setup UART for 115.2K8N1 */
+	Chip_UART_Init(LPC_USART);
+	Chip_UART_SetBaud(LPC_USART, 9600);
+	Chip_UART_ConfigData(LPC_USART, (UART_LCR_WLEN8 | UART_LCR_SBS_1BIT));
+	Chip_UART_SetupFIFOS(LPC_USART, (UART_FCR_FIFO_EN | UART_FCR_TRG_LEV2));
+	Chip_UART_TXEnable(LPC_USART);
+
+	/* Before using the ring buffers, initialize them using the ring
+	   buffer init function */
+	RingBuffer_Init(&rxring, rxbuff, 1, UART_RRB_SIZE);
+	RingBuffer_Init(&txring, txbuff, 1, UART_SRB_SIZE);
+
+	/* Enable receive data and line status interrupt */
+	Chip_UART_IntEnable(LPC_USART, (UART_IER_RBRINT | UART_IER_RLSINT));
+	//Chip_UART_IntEnable(LPC_USART, UART_IER_RBRINT );
+
+	/* preemption = 1, sub-priority = 1 */
+	NVIC_SetPriority(UART0_IRQn, 1);
+	NVIC_EnableIRQ(UART0_IRQn);
+
+	/* Send initial messages */
+	//Chip_UART_SendRB(LPC_USART, &txring, inst1, sizeof(inst1) - 1);
+	//Chip_UART_SendRB(LPC_USART, &txring, inst2, sizeof(inst2) - 1);
+
+}
+
+static void vLEDTask0(void *pvParameters) {
+
+	int i=0;
+	char str[20];
+	uint32_t ulNotifiedValue;
+	bool bLastState = false;
+	for (;;) {
+		 xTaskNotifyWait( 0x00, ULONG_MAX, &ulNotifiedValue,  portMAX_DELAY );
+
+		 bool bNewState = (bool)ulNotifiedValue;
+		 if(bNewState != bLastState){
+			 if(bNewState == true){
+				for(int i=0; i<8; i++){
+					relaySwitch(i, true);
+					vTaskDelay(configTICK_RATE_HZ/2);
+				}
+
+			 }
+			 else{
+				for(int i=7; i>=0; i--){
+					relaySwitch(i, false);
+					vTaskDelay(configTICK_RATE_HZ/2);
+				}
+
+			 }
+			 bLastState = bNewState;
+		 }
+	}
+}
+
+
+static uint8_t g_rxBuff[256];
+static void vUartTask0(void *pvParameters) {
+	uint32_t prompt = 0, rdCnt = 0;
+	bool bRelayState = true;
+
+	char recvStr[256];
+	int recvStrInd = 0;
+	memset(recvStr, 0, 256);
+
+	for(;;){
+		/* Check if host has connected and opened the VCOM port */
+		if ((vcom_connected() != 0) && (prompt == 0)) {
+			vcomPrintf("connected lpc\r\n");
+			prompt = 1;
+		}
+
+		//Chip_UART_SendRB(LPC_USART, &txring, "AT", sizeof("AT") - 1);
+
+		if (prompt) {
+			//Chip_UART_SendRB(LPC_USART, &txring, "AT", sizeof("AT") - 1);
+
+			//Chip_UART_SendRB(LPC_USART, &txring, "AT", sizeof("AT") - 1);
+			//vTaskDelay(10);
+			rdCnt = vcom_bread(&g_rxBuff[0], 256);
+			if (rdCnt > 0) {
+				char s = g_rxBuff[0];
+				g_rxBuff[0]=0;
+				switch(s){
+					case 't':
+						uartPrintf("AT\r\n");
+						break;
+					case 'k':
+						uartPrintf("AT+CIPSTATUS\r\n");
+						break;
+					case 'e':
+						uartPrintf("AT+CIPSTART=\"TCP\",\"192.168.0.102\",55056\r\n");
+						break;
+					case 's':
+						uartPrintf("AT+CIPSEND=4\r\naa\r\n");
+						break;
+					case 'p':
+						uartPrintf("AT+CIFSR\r\n");
+						break;
+					case 'c':
+						uartPrintf("AT+CWJAP=\"TL-WR842ND\",\"kkkknnnn\"\r\n");
+						break;
+					case 'l':
+						uartPrintf("AT+CWLAP\r\n");
+						break;
+					case 'v':
+						uartPrintf("AT+GMR\r\n");
+						break;
+					case 'b':
+						sprintf(g_rxBuff, "set relay to %d\r\n", bRelayState);
+						vcomPrintf(g_rxBuff);
+						xTaskNotify( relayTaskHandle, bRelayState, eSetValueWithoutOverwrite );
+						bRelayState = !bRelayState;
+						break;
+					default:
+						uartPrintf("AT\r\n");
+				}
+				//Chip_UART_SendBlocking(LPC_USART, &g_rxBuff[0], sizeof(&g_rxBuff[0]) - 1);
+
+			}
+
+			//vTaskDelay(10);
+
+			rdCnt = Chip_UART_ReadRB(LPC_USART, &rxring, &g_rxBuff[0], 256);
+			g_rxBuff[rdCnt] = 0;
+
+			if (rdCnt > 0) {
+				//vcom_write(&g_rxBuff[0], rdCnt);
+				vcomPrintf(&g_rxBuff[0]);
+
+				if((recvStrInd + rdCnt + 1) > 256)
+					recvStrInd = 0;
+
+				memcpy(&(recvStr[recvStrInd]), &(g_rxBuff[0]), rdCnt+1);
+				recvStrInd+=rdCnt;
+
+				recvStr[recvStrInd] = 0;
+				if(rdCnt>2){
+					sprintf(recvStr, " --== %c %c \r\n", g_rxBuff[rdCnt-1], g_rxBuff[rdCnt-2]);
+					vcomPrintf(recvStr);
+
+				}
+//				vcomPrintf("====\r\n");
+//				vcomPrintf(&(recvStr[0]));
+//				vcomPrintf("====\r\n");
+
+//				if(recvStr[recvStrInd-1] == '\n'){
+//					recvStrInd = 0;
+//					vcomPrintf("str end det \r\n");
+//				}
+			}
+
+		}
+		//Chip_UART_SendRB(LPC_USART, &txring, inst2, sizeof(inst2) - 1);
+		//vTaskDelay(100);
+		vTaskDelay(1);
+	}
+}
+
+
+static void vUartTask1(void *pvParameters) {
+	uint32_t rdCnt = 0;
+
+	while(1){
+		//Chip_UART_SendBlocking(LPC_USART, "AT\r\n", sizeof("AT\r\n") - 1);
+		//rdCnt = Chip_UART_Read(LPC_USART, &g_rxBuff[0], 100);
+//		if (rdCnt > 0) {
+//			vcom_write(&g_rxBuff[0], rdCnt);
+//		}
+
+
+		  // Send request
+//		  ESP8266proClient con(wifi, printResponse);
+//		  con.connectTcp("37.59.251.26", 80);
+//		  con.send("GET / HTTP/1.0\r\nHost: simple.anakod.ru\r\n\r\n");
+//		  con.waitResponse();
+//		  con.close(configTICK_RATE_HZ);
+
+		  vTaskDelay(0);
+	}
+
+}
+
+static void vBut1Task(void *pvParameters) {
+
+	bool LedState = true;
+	for(;;){
+
+		    LedState != LedState;
+	}
+
+}
+
+int main(void)
+{
+
+	SystemCoreClockUpdate();
+	/* Initialize board and chip */
+	Board_Init();
+	initRelayPins();
+
+	initCdcVcom();
+
+	initUart();
+
+	/* LED0 toggle thread */
+	xTaskCreate(vLEDTask0, (signed char *) "vTaskLed0",
+				configMINIMAL_STACK_SIZE, NULL, (tskIDLE_PRIORITY + 1UL),
+				(xTaskHandle *) &relayTaskHandle);
+
+	xTaskCreate(vUartTask0, (signed char *) "vUartTask0",
+				configMINIMAL_STACK_SIZE*2, NULL, (tskIDLE_PRIORITY + 1UL),
+				(xTaskHandle *) NULL);
+
+//	xTaskCreate(vBut1Task, (signed char *) "vButton1Task",
+//				configMINIMAL_STACK_SIZE, NULL, (tskIDLE_PRIORITY + 1UL),
+//				(xTaskHandle *) NULL);
+	//vUartTask0
+	/* Start the scheduler */
+	vTaskStartScheduler();
+}
+
+
+void vApplicationMallocFailedHook( void )
+{
+	/* vApplicationMallocFailedHook() will only be called if
+	configUSE_MALLOC_FAILED_HOOK is set to 1 in FreeRTOSConfig.h.  It is a hook
+	function that will get called if a call to pvPortMalloc() fails.
+	pvPortMalloc() is called internally by the kernel whenever a task, queue,
+	timer or semaphore is created.  It is also called by various parts of the
+	demo application.  If heap_1.c or heap_2.c are used, then the size of the
+	heap available to pvPortMalloc() is defined by configTOTAL_HEAP_SIZE in
+	FreeRTOSConfig.h, and the xPortGetFreeHeapSize() API function can be used
+	to query the size of free heap space that remains (although it does not
+	provide information on how the remaining heap might be fragmented). */
+	taskDISABLE_INTERRUPTS();
+	for( ;; );
+}
+/*-----------------------------------------------------------*/
+
+//void vApplicationIdleHook( void )
+//{
+//	/* vApplicationIdleHook() will only be called if configUSE_IDLE_HOOK is set
+//	to 1 in FreeRTOSConfig.h.  It will be called on each iteration of the idle
+//	task.  It is essential that code added to this hook function never attempts
+//	to block in any way (for example, call xQueueReceive() with a block time
+//	specified, or call vTaskDelay()).  If the application makes use of the
+//	vTaskDelete() API function (as this demo application does) then it is also
+//	important that vApplicationIdleHook() is permitted to return to its calling
+//	function, because it is the responsibility of the idle task to clean up
+//	memory allocated by the kernel to any task that has since been deleted. */
+//}
+/*-----------------------------------------------------------*/
+
+void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTaskName )
+{
+	( void ) pcTaskName;
+	( void ) pxTask;
+
+	if ((vcom_connected() != 0)) {
+		vcom_write("Stack overflow!!\r\n", 15);
+	}
+	/* Run time stack overflow checking is performed if
+	configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2.  This hook
+	function is called if a stack overflow is detected. */
+	taskDISABLE_INTERRUPTS();
+	for( ;; );
+}
+/*-----------------------------------------------------------*/
+
+//void vApplicationTickHook( void )
+//{
+//#if mainCHECK_INTERRUPT_STACK == 1
+//extern unsigned long _pvHeapStart[];
+//
+//	/* This function will be called by each tick interrupt if
+//	configUSE_TICK_HOOK is set to 1 in FreeRTOSConfig.h.  User code can be
+//	added here, but the tick hook is called from an interrupt context, so
+//	code must not attempt to block, and only the interrupt safe FreeRTOS API
+//	functions can be used (those that end in FromISR()). */
+//
+//	/* Manually check the last few bytes of the interrupt stack to check they
+//	have not been overwritten.  Note - the task stacks are automatically
+//	checked for overflow if configCHECK_FOR_STACK_OVERFLOW is set to 1 or 2
+//	in FreeRTOSConifg.h, but the interrupt stack is not. */
+//	configASSERT( memcmp( ( void * ) _pvHeapStart, ucExpectedInterruptStackValues, sizeof( ucExpectedInterruptStackValues ) ) == 0U );
+//#endif /* mainCHECK_INTERRUPT_STACK */
+//}
+
