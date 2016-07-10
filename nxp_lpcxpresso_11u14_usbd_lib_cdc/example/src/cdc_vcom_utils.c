@@ -201,6 +201,7 @@ void vVcomTask(void *pvParameters)
 //					vcomPrintf(g_rxBuff);
 //					break;
 
+				case 'e':
 				case 's':
 				case 'p':
 				case 'u':

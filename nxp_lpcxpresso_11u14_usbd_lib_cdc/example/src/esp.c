@@ -730,9 +730,14 @@ void vEspTask(void *pvParameters)
 //				case 'k':
 //					uartPrintf("AT+CIPSTATUS\r\n");
 //					break;
-//				case 'e':
-//					uartPrintf("AT+CIPSTART=\"TCP\",\"192.168.0.22\",1488\r\n");
-//					break;
+				case 'e':
+					vcomPrintf("try to connect to 192.168.0.103:23\r\n");
+					uartPrintf("AT+CIPSTART=\"TCP\",\"192.168.0.103\",23\r\n");
+					if(waitForEspAnswerOk(10000, true) == false){
+						vcomPrintf("no answer\r\n");
+						break;
+					}
+					break;
 //				case 'o':
 //					uartPrintf("AT+CIPSEND=4\r\n2345\r\n");
 //					break;
@@ -741,14 +746,15 @@ void vEspTask(void *pvParameters)
 //					vcomPrintf("start serv\r\n");
 //					waitCommand(1000000);
 //					break;
-//				case 'p':
-//					//uartPrintf("AT+CIFSR\r\n");
-//					uartPrintf("AT+PING=\"192.168.0.103\"\r\n");
-//					if(waitForEspAnswerOk(10000, true) == false){
-//						vcomPrintf("no answer on AT+PING\r\n");
-//						break;
-//					}
-//					break;
+				case 'p':
+					//uartPrintf("AT+CIFSR\r\n");
+					vcomPrintf("AT+CIPSEND ping\r\n");
+					uartPrintf("AT+CIPSEND=4\r\nping\r\n");
+					if(waitForEspAnswerOk(10000, true) == false){
+						vcomPrintf("no answer\r\n");
+						break;
+					}
+					break;
 //				case 'c':
 //					vcomPrintf("try to connect to TL-WR842ND\r\n");
 //					//uartPrintf("AT+CWJAP=\"Polden\",\"studio123\"\r\n");
