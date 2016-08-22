@@ -43,7 +43,6 @@ static void vMainTask(void *pvParameters)
 	vTaskDelay(1000);
 	for(;;){
 
-
 		if((isConnected() == true) && (isServerPingable() == true)){
 			//vcomPrintf(" --- connected \r\n");
 			allowButtonsInput(); /* Enable interrupt in the NVIC */
@@ -55,9 +54,9 @@ static void vMainTask(void *pvParameters)
 				sprintf(str, "notify val %x\r\n", ulNotifiedValue);
 				vcomPrintf(str);
 				if((ulNotifiedValue&EVENT_BUTTON2_BIT) != 0){ //warm up
-					vcomPrintf("But2. Esp send warmup 2345\r\n");
+					vcomPrintf("But2. Esp send \"but2\" .\r\n");
 
-					if(espSend("2345") == true){
+					if(espSend("but1") == true){
 						setButtonLedDelayFast();
 						secondButPushState ++;
 					}
@@ -66,9 +65,9 @@ static void vMainTask(void *pvParameters)
 				}
 				else if((ulNotifiedValue&EVENT_BUTTON1_BIT) != 0){
 					secondButPushState = 0;
-					vcomPrintf("But1. Esp send start 1234\r\n");
+					vcomPrintf("But1. Esp send \"but1\"\r\n");
 					//xTaskNotify(espTaskHandle, '1', eSetValueWithoutOverwrite );
-					if(espSend("1234") == false){
+					if(espSend("but2") == false){
 						vcomPrintf("send start command error. restart\r\n");
 						continue;
 					}
