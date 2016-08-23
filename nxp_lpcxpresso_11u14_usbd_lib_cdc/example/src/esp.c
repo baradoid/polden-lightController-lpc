@@ -893,7 +893,7 @@ void vEspTask(void *pvParameters)
 					}
 					else{
 						vcomPrintf("no answer\r\n");
-						break;
+						//break;
 					}
 				}
 				else{
