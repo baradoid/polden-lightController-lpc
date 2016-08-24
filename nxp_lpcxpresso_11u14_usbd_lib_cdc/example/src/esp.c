@@ -608,8 +608,8 @@ bool pingHost(const char *host)
 	bool ret = false;
 	char buf[70];
 	char outBuf[70];
-	//sprintf(outBuf, "AT+PING=\"%s\"", host);
-	//vcomPrintf(buf);
+	sprintf(outBuf, "AT+PING=\"%s\"", host);
+	vcomPrintf(buf);
 	sprintf(buf, "AT+PING=\"%s\"\r\n", host);
 	uartPrintf(buf);
 
@@ -753,6 +753,7 @@ void vEspTask(void *pvParameters)
 //	}
 
 	//vTaskDelay(4000);
+	bIsPingable = true; //***
 
 	unLockEsp();
 
@@ -851,32 +852,33 @@ void vEspTask(void *pvParameters)
 		}
 		else{
 			lockEsp();
+
 			if(bConnected == true){
 				//vcomPrintf("try ping server\r\n");
-				if(pingTerminal() == false){
-					vcomPrintf("ping terminal fail\r\n");
+//				if(pingTerminal() == false){
+//					vcomPrintf("ping terminal fail\r\n");
 
-					if(pingHost(hostIp[ssidInd]) == false){
-						bIsPingable = false;
-						vcomPrintf("no ping to host\r\n");
-						if(isWifiConnected() == false){
-							vcomPrintf("wifi not connected. Check ESP\r\n");
-							bConnected = false;
-							if(sendAT() == false){
-								vcomPrintf("ESP fail\r\n");
-							}
-							else{
-								vcomPrintf("ESP OK\r\n");
-							}
-						}
-					}
-					else{
-						bIsPingable = true;
-					}
-				}
-				else{
-					vcomPrintf("ping terminal ok\r\n");
-				}
+//					if(pingHost(hostIp[ssidInd]) == false){
+//						bIsPingable = false;
+//						vcomPrintf("no ping to host\r\n");
+//						if(isWifiConnected() == false){
+//							vcomPrintf("wifi not connected. Check ESP\r\n");
+//							bConnected = false;
+//							if(sendAT() == false){
+//								vcomPrintf("ESP fail\r\n");
+//							}
+//							else{
+//								vcomPrintf("ESP OK\r\n");
+//							}
+//						}
+//					}
+//					else{
+//						bIsPingable = true;
+//					}
+//				}
+//				else{
+//					vcomPrintf("ping terminal ok\r\n");
+//				}
 			}
 			else{
 				vcomPrintf("try to connect to wifi\r\n");
