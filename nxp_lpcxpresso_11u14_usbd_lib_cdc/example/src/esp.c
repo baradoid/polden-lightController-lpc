@@ -753,7 +753,6 @@ void vEspTask(void *pvParameters)
 //	}
 
 	//vTaskDelay(4000);
-	bIsPingable = true; //***
 
 	unLockEsp();
 
@@ -763,6 +762,36 @@ void vEspTask(void *pvParameters)
 //	for(;;){
 //		vTaskDelay(50);
 //	}
+
+
+checkAt:
+	vcomPrintf("Check AT\r\n");
+	while(sendAT() == false){
+		vcomPrintf("ESP fail\r\n");
+		vTaskDelay(50);
+	}
+	vcomPrintf("ESP OK\r\n");
+	vTaskDelay(50);
+
+	if(isWifiConnected() == false){
+		vcomPrintf("wifi not connected. connecting\r\n");
+		if(connectApList() == false){
+			goto checkAt;
+		}
+	}
+	else{
+		vcomPrintf("wifi connected\r\n");
+	}
+	vTaskDelay(50);
+
+	while(pingHost(hostIp[ssidInd]) == true){
+		vTaskDelay(5000);
+	}
+
+	goto checkAt;
+
+
+
 	for(;;){
 		if(xTaskNotifyWait( 0x00, ULONG_MAX, &ulNotifiedValue,  1000 ) == true){
 			lockEsp();
