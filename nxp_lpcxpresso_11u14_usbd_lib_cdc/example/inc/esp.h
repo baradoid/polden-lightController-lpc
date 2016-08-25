@@ -19,7 +19,7 @@
 #define AP2_SSID 		 "My ASUS"
 #define AP2_PASS         "kkkknnnn"
 #define AP2_LOCAL_IP     "192.168.43.5"
-#define AP2_SERVER_IP    "192.168.43.1"
+#define AP2_SERVER_IP    "192.168.43.250"
 #define AP2_LOCAL_PORT   "80"
 
 #define serverPort   "1488"

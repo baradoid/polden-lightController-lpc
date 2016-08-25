@@ -43,6 +43,9 @@ static void vMainTask(void *pvParameters)
 	vTaskDelay(1000);
 	for(;;){
 
+	}
+	for(;;){
+
 		if((isConnected() == true) && (isServerPingable() == true)){
 			//vcomPrintf(" --- connected \r\n");
 			allowButtonsInput(); /* Enable interrupt in the NVIC */

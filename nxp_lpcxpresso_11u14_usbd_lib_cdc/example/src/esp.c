@@ -645,6 +645,40 @@ bool pingHost(const char *host)
 	return ret;
 }
 
+bool connectToTcpHost(const char *host)
+{
+	bool ret = false;
+	char buf[100];
+	sprintf(buf, "AT+CIPSTART=\"TCP\",\"%s\",23\r\n", host);
+	vcomPrintf(buf);
+	uartPrintf(buf);
+	for (;;) {
+		if (waitForEspAnswerToBuf(buf, 25000, true) == false) {
+			//vcomPrintf("no AT+CWJAP_CUR? answer\r\n");
+			ret = false;
+			break;
+		}
+
+		if (strcmp(buf, "OK\r\n") == 0) {
+			//vcomPrintf("detected OK\r\n");
+			ret = true;
+			break;
+		}
+		else if (strcmp(buf, "ERROR\r\n") == 0) {
+			//vcomPrintf("detected ERROR\r\n");
+			ret = false;
+			break;
+		}
+		else if (strcmp(buf, "ALREADY CONNECTED\r\n") == 0) {
+			ret = true;
+			break;
+		}
+	}
+	//vcomPrintf("\r\n");
+	return ret;
+
+}
+
 bool pingTerminal()
 {
 	bool ret = true;
@@ -653,17 +687,18 @@ bool pingTerminal()
 	//xTaskNotify(espTaskHandle, '1', eSetValueWithoutOverwrite );
 
 	uartPrintf("AT+CIPSEND=6\r\n");
-	vTaskDelay(50);
+	vTaskDelay(200);
 	uartPrintf("ping\r\n");
-	if(waitForEspAnswerString("SEND OK\r\n", 10000, false) == false){
+	if(waitForEspAnswerString("SEND OK\r\n", 10000, true) == false){
 		vcomPrintf("CIPSEND  to\r\n");
 		return false;
 	}
 
-	if (waitForEspAnswerToBuf(buf, 25000, true) == false) {
-		vcomPrintf("pong wait TO\r\n");
-		return false;
+
+	while (waitForEspAnswerToBuf(buf, 25000, true) == true) {
+		//vcomPrintf("pong wait TO\r\n");
 	}
+	return false;
 
 	if (strcmp(buf, "pong\r\n") == 0) {
 		vcomPrintf(" \"pong\" detected\r\n");
@@ -779,14 +814,38 @@ checkAt:
 			goto checkAt;
 		}
 	}
-	else{
-		vcomPrintf("wifi connected\r\n");
-	}
 	vTaskDelay(50);
 
-	while(pingHost(hostIp[ssidInd]) == true){
-		vTaskDelay(5000);
+	vcomPrintf("wifi connected. try ping\r\n");
+
+	bool bPingRes = false;
+	for(int i=0; i<5;i++){
+		bPingRes |= pingHost(hostIp[ssidInd]);
+		vTaskDelay(1000);
 	}
+
+	char str[100];
+	if(bPingRes == false){
+		sprintf(str, "no ping to server IP %s\r\n", hostIp[ssidInd]);
+		vcomPrintf(str);
+		goto checkAt;
+	}
+
+	sprintf(str, "try to connect to server IP %s:23\r\n", hostIp[ssidInd]);
+	vcomPrintf(str);
+
+	if(connectToTcpHost(hostIp[ssidInd]) == true){
+		vcomPrintf("terminal connected\r\n");
+	}
+	else{
+		vcomPrintf("terminal connect error\r\n");
+		//break;
+	}
+
+	while(pingTerminal() == true){
+		vcomPrintf("ping terminal OK\r\n");
+	}
+	vcomPrintf("ping terminal fail\r\n");
 
 	goto checkAt;
 
