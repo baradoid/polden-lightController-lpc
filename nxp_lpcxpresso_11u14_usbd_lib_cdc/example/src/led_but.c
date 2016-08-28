@@ -55,14 +55,12 @@ void vLedTask(void *pvParameters)
 	/* Enable PININT clock */
 	Chip_Clock_EnablePeriphClock(SYSCTL_CLOCK_PINT);
 	/* Configure interrupt channel for the GPIO pin in SysCon block */
-	Chip_SYSCTL_SetPinInterrupt(0, 1, 5);
-	Chip_SYSCTL_SetPinInterrupt(1, 1, 18);
+//	Chip_SYSCTL_SetPinInterrupt(0, 1, 5);
+//	Chip_SYSCTL_SetPinInterrupt(1, 1, 18);
 
 	/* Configure channel interrupt as edge sensitive and falling edge interrupt */
-	Chip_PININT_SetPinModeEdge(LPC_PININT, PININTCH0|PININTCH1);
-	Chip_PININT_EnableIntLow(LPC_PININT, PININTCH0|PININTCH1);
-
-
+//	Chip_PININT_SetPinModeEdge(LPC_PININT, PININTCH0|PININTCH1);
+//	Chip_PININT_EnableIntLow(LPC_PININT, PININTCH0|PININTCH1);
 
 
 	//	Chip_GPIO_SetPinDIROutput(LPC_GPIO, 0, 18); //D0
@@ -85,6 +83,7 @@ void vLedTask(void *pvParameters)
 
 
 	//char str[25];
+	int i=0;
 	for(;;){
 //		if(xTaskNotifyWait( 0x00, ULONG_MAX, &ulNotifiedValue,  500) == pdTRUE){
 //			sprintf(str, "al %d\r\n", ulNotifiedValue);
@@ -93,10 +92,27 @@ void vLedTask(void *pvParameters)
 
 		//vcomPrintf("Toggle\r\n");
 
-		Chip_GPIO_SetPinToggle(LPC_GPIO, 1, 11);
-		Chip_GPIO_SetPinToggle(LPC_GPIO, 1, 10);
+		if(i>50){
+			Chip_GPIO_SetPinToggle(LPC_GPIO, 1, 11);
+			Chip_GPIO_SetPinToggle(LPC_GPIO, 1, 10);
+			i = 0;;
+		}
+		else{
+			i++;
+		}
 
-		vTaskDelay(500);
+		if(Chip_GPIO_GetPinState(LPC_GPIO, 1, 5) == true)
+			Chip_GPIO_SetPinOutLow(LPC_GPIO, 1, 9); //D2
+		else
+			Chip_GPIO_SetPinOutHigh(LPC_GPIO, 1, 9); //D2
+
+		if(Chip_GPIO_GetPinState(LPC_GPIO, 1, 18) == true)
+			Chip_GPIO_SetPinOutLow(LPC_GPIO, 1, 8); //D1
+		else
+			Chip_GPIO_SetPinOutHigh(LPC_GPIO, 1, 8); //D1
+
+
+		vTaskDelay(10);
 	}
 }
 

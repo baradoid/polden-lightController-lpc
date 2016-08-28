@@ -48,7 +48,7 @@ static void vMainTask(void *pvParameters)
 
 		if((isConnected() == true) && (isServerPingable() == true)){
 			//vcomPrintf(" --- connected \r\n");
-			allowButtonsInput(); /* Enable interrupt in the NVIC */
+			//allowButtonsInput(); /* Enable interrupt in the NVIC */
 			turnOnGreenLed();
 			if(secondButPushState == 0)
 				setButtonLedDelayNormal();

@@ -696,7 +696,7 @@ bool pingTerminal()
 
 
 	while (waitForEspAnswerToBuf(buf, 25000, true) == true) {
-		//vcomPrintf("pong wait TO\r\n");
+		vcomPrintf("pong wait TO\r\n");
 	}
 	return false;
 
@@ -715,6 +715,42 @@ bool pingTerminal()
 	return ret;
 }
 
+
+bool checkIPStatus()
+{
+	bool ret = false;
+	char buf[70];
+	vcomPrintf("try lock esp\r\n");
+	//xTaskNotify(espTaskHandle, '1', eSetValueWithoutOverwrite );
+
+	uartPrintf("AT+CIPSTATUS\r\n");
+
+	//result:
+	//2 - got IP
+	//3 - connected
+	//4 - disconnected
+
+	while (waitForEspAnswerToBuf(buf, 5000, true) == true) {
+		//vcomPrintf("AT+CIPSTATUS ret wait fail\r\n");
+		if (strcmp(buf, "STATUS:2\r\n") == 0){
+			vcomPrintf("IP status GOT IP\r\n");
+			ret = false;
+		}
+		if (strcmp(buf, "STATUS:3\r\n") == 0){
+			vcomPrintf("IP status CONNECTED\r\n");
+			ret = true;
+		}
+		else if(strcmp(buf, "STATUS:4\r\n") == 0){
+			vcomPrintf("IP status DISCONNECTED\r\n");
+			ret = false;
+		}
+		else{
+			//vcomPrintf(buf);
+		}
+	}
+	return ret;
+}
+
 void vEspTask(void *pvParameters)
 {
 
@@ -727,7 +763,6 @@ void vEspTask(void *pvParameters)
     		//vcomPrintf("err create binary sem, xUartMsgSem");
     }
 
-
 	lockEsp();
 
 	initUart();
@@ -737,8 +772,6 @@ void vEspTask(void *pvParameters)
 	if(waitForEspAnswerOk(300, false) == false){
 		vcomPrintf("ATE0 no answer\r\n");
 	}
-
-
 
 	vcomPrintf("check to lazy OK\r\n");
 	if(waitForEspAnswerOk(2000, true) == false){
@@ -842,10 +875,11 @@ checkAt:
 		//break;
 	}
 
-	while(pingTerminal() == true){
-		vcomPrintf("ping terminal OK\r\n");
+
+	while(checkIPStatus() == true){
+		vcomPrintf("check IP status OK\r\n");
 	}
-	vcomPrintf("ping terminal fail\r\n");
+	vcomPrintf("check IP status fail\r\n");
 
 	goto checkAt;
 
