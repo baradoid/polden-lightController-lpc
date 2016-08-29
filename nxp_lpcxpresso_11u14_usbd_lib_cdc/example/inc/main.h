@@ -1,7 +1,8 @@
 #pragma once
 
-#define EVENT_BUTTON1_BIT 			0x0010
-#define EVENT_BUTTON2_BIT 			0x0020
+#define EVENT_BUTTON_1_BIT 			0x0010
+#define EVENT_BUTTON_2_BIT 			0x0020
+#define EVENT_BUTTON_CANCEL_BIT 	0x0040
 
 
 #define EVENT_ESP_MASK				0x1f00

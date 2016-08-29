@@ -41,7 +41,25 @@ void allowButtonsInput()
 	NVIC_EnableIRQ(PIN_INT1_IRQn);
 }
 
+void setDLed(int ledNum, bool state)
+{
+	const int ledsPinNum[] = {66,8,9,10,11};
 
+//	Chip_GPIO_SetPinDIROutput(LPC_GPIO, 1, 11); //D4
+//	Chip_GPIO_SetPinDIROutput(LPC_GPIO, 1, 10); //D3
+//	Chip_GPIO_SetPinDIROutput(LPC_GPIO, 1, 9); //D2
+//	Chip_GPIO_SetPinDIROutput(LPC_GPIO, 1, 8); //D1
+
+	Chip_GPIO_SetPinState(LPC_GPIO, 1, ledsPinNum[ledNum], state);
+
+}
+
+typedef enum{
+	butOffState,
+	but1onState,
+	but2onState,
+	longButState
+} TButState;
 
 void vLedTask(void *pvParameters)
 {
@@ -82,8 +100,12 @@ void vLedTask(void *pvParameters)
 	//Chip_GPIO_SetPortOutLow(LPC_GPIO, 1, 9);
 
 
+	TButState butState = butOffState, lastButState = butOffState;
 	//char str[25];
-	int i=0;
+	int blinkCounter=0;
+	bool b1CurState = false, b1LastState = false;
+	bool b2CurState = false, b2LastState = false;
+	int b1DelayCounter = 0, b2DelayCounter = 0;
 	for(;;){
 //		if(xTaskNotifyWait( 0x00, ULONG_MAX, &ulNotifiedValue,  500) == pdTRUE){
 //			sprintf(str, "al %d\r\n", ulNotifiedValue);
@@ -92,24 +114,103 @@ void vLedTask(void *pvParameters)
 
 		//vcomPrintf("Toggle\r\n");
 
-		if(i>50){
+		if(blinkCounter>50){
 			Chip_GPIO_SetPinToggle(LPC_GPIO, 1, 11);
 			Chip_GPIO_SetPinToggle(LPC_GPIO, 1, 10);
-			i = 0;;
+			blinkCounter = 0;
 		}
 		else{
-			i++;
+			blinkCounter++;
 		}
 
-		if(Chip_GPIO_GetPinState(LPC_GPIO, 1, 5) == true)
-			Chip_GPIO_SetPinOutLow(LPC_GPIO, 1, 9); //D2
-		else
-			Chip_GPIO_SetPinOutHigh(LPC_GPIO, 1, 9); //D2
+		b1CurState = Chip_GPIO_GetPinState(LPC_GPIO, 1, 5) == false;
+		b2CurState = Chip_GPIO_GetPinState(LPC_GPIO, 1, 18) == false;
 
-		if(Chip_GPIO_GetPinState(LPC_GPIO, 1, 18) == true)
-			Chip_GPIO_SetPinOutLow(LPC_GPIO, 1, 8); //D1
-		else
-			Chip_GPIO_SetPinOutHigh(LPC_GPIO, 1, 8); //D1
+
+		if(b1CurState == true){
+			if(b1LastState == false){
+				b1DelayCounter = 0;
+			}
+			b1DelayCounter++;
+			if((b1DelayCounter > 25) && (b1DelayCounter < 200))
+				butState = but1onState;
+			else if(b1DelayCounter > 200){
+				butState = longButState;
+			}
+		}
+		else if(b1LastState == true){
+			butState = butOffState;
+		}
+
+
+		if(b2CurState == true){
+			if(b2LastState == false){
+				b2DelayCounter = 0;
+			}
+			b2DelayCounter++;
+			if((b2DelayCounter > 25) && (b2DelayCounter < 200))
+				butState = but2onState;
+			else if(b2DelayCounter > 200){
+				butState = longButState;
+			}
+		}
+		else if(b2LastState == true){
+			butState = butOffState;
+		}
+
+		b1LastState = b1CurState;
+		b2LastState = b2CurState;
+
+
+		switch(butState){
+			case butOffState:
+				setDLed(1, false);
+				setDLed(2, false);
+				if(mainTaskHandle != NULL){
+					if(lastButState == but1onState){
+						xTaskNotify(mainTaskHandle, EVENT_BUTTON_1_BIT, eSetBits);
+						//vcomPrintf("but 1\r\n");
+					}
+					else if(lastButState == but2onState){
+						xTaskNotify(mainTaskHandle, EVENT_BUTTON_2_BIT, eSetBits);
+						//vcomPrintf("but 2\r\n");
+					}
+					else if(lastButState == longButState){
+						xTaskNotify(mainTaskHandle, EVENT_BUTTON_CANCEL_BIT, eSetBits);
+						//vcomPrintf("cancel button\r\n");
+					}
+				}
+				break;
+			case but1onState:
+				setDLed(1, true);
+				setDLed(2, false);
+				break;
+			case but2onState:
+				setDLed(1, false);
+				setDLed(2, true);
+				break;
+			case longButState:
+				setDLed(1, true);
+				setDLed(2, true);
+				break;
+		}
+		lastButState = butState;
+
+
+		//if(b1CurState == true)
+			//Chip_GPIO_SetPinOutHigh(LPC_GPIO, 1, 9); //D2
+			//setDLed(1, true);
+		//else
+			//Chip_GPIO_SetPinOutLow(LPC_GPIO, 1, 9); //D2
+			//setDLed(1, false);
+
+		//if(b2CurState == true)
+			//Chip_GPIO_SetPinOutHigh(LPC_GPIO, 1, 8); //D1
+			//setDLed(2, true);
+		//else
+			//Chip_GPIO_SetPinOutLow(LPC_GPIO, 1, 8); //D1
+			//setDLed(2, false);
+
 
 
 		vTaskDelay(10);

@@ -56,7 +56,7 @@ static void vMainTask(void *pvParameters)
 			if(xTaskNotifyWait( ULONG_MAX, ULONG_MAX, &ulNotifiedValue,  1000  ) == true){
 				sprintf(str, "notify val %x\r\n", ulNotifiedValue);
 				vcomPrintf(str);
-				if((ulNotifiedValue&EVENT_BUTTON2_BIT) != 0){ //warm up
+				if((ulNotifiedValue&EVENT_BUTTON_2_BIT) != 0){ //warm up
 					vcomPrintf("But2. Esp send \"but2\" .\r\n");
 
 					if(espSend("but1") == true){
@@ -66,7 +66,7 @@ static void vMainTask(void *pvParameters)
 					else
 						continue;
 				}
-				else if((ulNotifiedValue&EVENT_BUTTON1_BIT) != 0){
+				else if((ulNotifiedValue&EVENT_BUTTON_1_BIT) != 0){
 					secondButPushState = 0;
 					vcomPrintf("But1. Esp send \"but1\"\r\n");
 					//xTaskNotify(espTaskHandle, '1', eSetValueWithoutOverwrite );
