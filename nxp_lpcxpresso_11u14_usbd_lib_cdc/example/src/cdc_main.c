@@ -41,9 +41,9 @@ static void vMainTask(void *pvParameters)
 	bool ret;
 	int secondButPushState = 0;
 	vTaskDelay(1000);
-	for(;;){
+	//for(;;){
 
-	}
+	//}
 	for(;;){
 
 		if((isConnected() == true) && (isServerPingable() == true)){

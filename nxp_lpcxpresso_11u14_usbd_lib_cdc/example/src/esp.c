@@ -861,8 +861,11 @@ checkAt:
 	if(bPingRes == false){
 		sprintf(str, "no ping to server IP %s\r\n", hostIp[ssidInd]);
 		vcomPrintf(str);
+		bIsPingable = false;
 		goto checkAt;
 	}
+
+	bIsPingable = true;
 
 	sprintf(str, "try to connect to server IP %s:23\r\n", hostIp[ssidInd]);
 	vcomPrintf(str);
@@ -875,10 +878,11 @@ checkAt:
 		//break;
 	}
 
-
 	while(checkIPStatus() == true){
 		vcomPrintf("check IP status OK\r\n");
+		bConnected = true;
 	}
+	bConnected = false;
 	vcomPrintf("check IP status fail\r\n");
 
 	goto checkAt;
