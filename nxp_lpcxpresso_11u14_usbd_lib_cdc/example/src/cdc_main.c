@@ -54,30 +54,20 @@ static void vMainTask(void *pvParameters)
 				setButtonLedDelayNormal();
 
 			if(xTaskNotifyWait( ULONG_MAX, ULONG_MAX, &ulNotifiedValue,  1000  ) == true){
-				sprintf(str, "notify val %x\r\n", ulNotifiedValue);
-				vcomPrintf(str);
+				//sprintf(str, "notify val %x\r\n", ulNotifiedValue);
+				//vcomPrintf(str);
 				if((ulNotifiedValue&EVENT_BUTTON_2_BIT) != 0){ //warm up
-					vcomPrintf("But2. Esp send \"but2\" .\r\n");
-
-					if(espSend("but1") == true){
-						setButtonLedDelayFast();
-						secondButPushState ++;
-					}
-					else
-						continue;
+					//vcomPrintf("But2. Esp send \"but2\" .\r\n");
 				}
 				else if((ulNotifiedValue&EVENT_BUTTON_1_BIT) != 0){
 					secondButPushState = 0;
-					vcomPrintf("But1. Esp send \"but1\"\r\n");
-					//xTaskNotify(espTaskHandle, '1', eSetValueWithoutOverwrite );
-					if(espSend("but2") == false){
-						vcomPrintf("send start command error. restart\r\n");
-						continue;
-					}
+					//vcomPrintf("But1. Esp send \"but1\"\r\n");
 				}
 				else{
 					continue;
 				}
+
+				continue;
 
 				if(secondButPushState == 1){
 					vcomPrintf("second But pushed once\r\n");
@@ -86,68 +76,22 @@ static void vMainTask(void *pvParameters)
 				secondButPushState = 0;
 				turnOnRedLed();
 
-				//setButtonLedOff();
-				vcomPrintf("wait light OFF cmd. start serv with 60 min timeout\r\n");
-
-				if(waitCommand(recvStr, 60*60*1000) == false){
-					vcomPrintf("wait command error. restart\r\n");
-					continue;
-				}
-				sprintf(str, "wait command ok. recv - \"%s\" \r\n", recvStr);
-				vcomPrintf(str);
-
-				if(strcmp(recvStr, CMD_LIGHT_OFF) != 0){
-					vcomPrintf(" expected \""CMD_LIGHT_OFF"\". restart\r\n");
-					continue;
-				}
-
-				vcomPrintf("\r\n");
-
-		//		vcomPrintf("wait light off cmd. 3 min timeout\r\n");
-		//		uint32_t startTicks = xTaskGetTickCount();
-		//		for(;;){
-		//			int32_t to = (3*60*1000) - (xTaskGetTickCount()-startTicks);
-		//			if(to <= 0 )
-		//				break;
-		//			sprintf(str, "it to %d\r\n", to);
-		//			vcomPrintf(str);
-		//			if(xTaskNotifyWait( 0x00, ULONG_MAX, &ulNotifiedValue,  to) == pdFALSE){
-		//				break;
-		//			}
-		//			//sprintf(str, "notify val %x\r\n", ulNotifiedValue);
-		//			//vcomPrintf(str);
-		//			if((ulNotifiedValue&EVENT_ESP_MASK) != 0){
-		//				sprintf(str, "esp cmd 0x%x\r\n", ulNotifiedValue);
-		//				vcomPrintf(str);
-		//				break;
-		//			}
-		//			else{
-		//				sprintf(str, "unexpected 0x%x\r\n", ulNotifiedValue);
-		//				vcomPrintf(str);
-		//				continue;
-		//			}
-		//		}
-		//		if((ulNotifiedValue&EVENT_ESP_LIGHT_OFF_BIT) == 0){
-		//			vcomPrintf("no turnOff cmd\r\n");
-		//			continue;
-		//		}
-
 				vcomPrintf("turnOff cmd light recvd. Process...\r\n");
 				turnOnRelay();
 
 				vcomPrintf("wait light ON cmd. start serv with 5 min timeout\r\n");
 
-				if(waitCommand(recvStr, 5*60*1000) == false){
-					vcomPrintf("wait command error. Auto turn on.\r\n");
-					turnOffRelay();
-					continue;
-				}
-				sprintf(str, "wait command ok. recv -\"%s\"\r\n", recvStr);
-				vcomPrintf(str);
-
-				if(strcmp(recvStr, CMD_LIGHT_ON) != 0){
-					vcomPrintf(" expected \""CMD_LIGHT_ON"\". Auto turn on.\r\n");
-				}
+//				if(waitCommand(recvStr, 5*60*1000) == false){
+//					vcomPrintf("wait command error. Auto turn on.\r\n");
+//					turnOffRelay();
+//					continue;
+//				}
+//				sprintf(str, "wait command ok. recv -\"%s\"\r\n", recvStr);
+//				vcomPrintf(str);
+//
+//				if(strcmp(recvStr, CMD_LIGHT_ON) != 0){
+//					vcomPrintf(" expected \""CMD_LIGHT_ON"\". Auto turn on.\r\n");
+//				}
 
 				vcomPrintf("\r\ncmd to turn ON light recvd. Process...\r\n");
 
@@ -234,7 +178,7 @@ int main(void)
 //    }
 
 	xTaskCreate(vEspTask, (signed char *) "vTaskEsp",
-					5*configMINIMAL_STACK_SIZE, NULL, (tskIDLE_PRIORITY + 1UL),
+					7*configMINIMAL_STACK_SIZE, NULL, (tskIDLE_PRIORITY + 1UL),
 					(xTaskHandle *) &espTaskHandle);
 
 

@@ -169,14 +169,17 @@ void vLedTask(void *pvParameters)
 				if(mainTaskHandle != NULL){
 					if(lastButState == but1onState){
 						xTaskNotify(mainTaskHandle, EVENT_BUTTON_1_BIT, eSetBits);
+						xTaskNotify(espTaskHandle, EVENT_BUTTON_1_BIT, eSetBits);
 						//vcomPrintf("but 1\r\n");
 					}
 					else if(lastButState == but2onState){
 						xTaskNotify(mainTaskHandle, EVENT_BUTTON_2_BIT, eSetBits);
+						xTaskNotify(espTaskHandle, EVENT_BUTTON_2_BIT, eSetBits);
 						//vcomPrintf("but 2\r\n");
 					}
 					else if(lastButState == longButState){
 						xTaskNotify(mainTaskHandle, EVENT_BUTTON_CANCEL_BIT, eSetBits);
+						xTaskNotify(espTaskHandle, EVENT_BUTTON_CANCEL_BIT, eSetBits);
 						//vcomPrintf("cancel button\r\n");
 					}
 				}

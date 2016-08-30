@@ -42,6 +42,7 @@ void UART_IRQHandler(void)
 
 		xHigherPriorityTaskWoken = pdFALSE;
 		xSemaphoreGiveFromISR( xUartMsgSem, &xHigherPriorityTaskWoken );
+		xTaskNotifyFromISR(espTaskHandle, EVENT_RECV_BYTE_BIT, eSetBits, &xHigherPriorityTaskWoken);
 	}
 }
 
@@ -347,27 +348,29 @@ bool espSendCommand(const char *ip, const char * port, const char *cmdStr, uint3
 bool espSend(const char *cmd)
 {
 	bool ret = true;
-	if(bConnected == false){
-		vcomPrintf("no connection\r\n");
-		return false;
-	}
-	vcomPrintf("try lock esp\r\n");
+//	if(bConnected == false){
+//		vcomPrintf("no connection\r\n");
+//		return false;
+//	}
+	//vcomPrintf("try lock esp\r\n");
 	//xTaskNotify(espTaskHandle, '1', eSetValueWithoutOverwrite );
-	lockEsp();
+	//lockEsp();
 
-	uartPrintf("AT+CIPSEND=4\r\n");
+	char str[50];
+	sprintf(str, "AT+CIPSEND=%d\r\n", strlen(cmd));
+	uartPrintf(str);
 	vTaskDelay(50);
 	uartPrintf(cmd);
 	if(waitForEspAnswerString("SEND OK\r\n", 10000, false) == false){
 		vcomPrintf("CIPSEND  to\r\n");
-		return false;;
+		return false;
 	}
 
 //	if(espSendCommand(hostIp[ssidInd], serverPort, cmd, 10000) == false){
 //		vcomPrintf("send error\r\n");
 //		ret = false;
 //	}
-	unLockEsp();
+	//unLockEsp();
 	return ret;
 }
 
@@ -507,7 +510,7 @@ bool connectToAp(const char *ssid, const char *pass)
 	uartPrintf(buf);
 
 	for(;;){
-		if(waitForEspAnswerToBuf(buf, 25000, false) == false){
+		if(waitForEspAnswerToBuf(buf, 15000, false) == false){
 			//vcomPrintf("no AT+CWJAP_CUR? answer\r\n");
 			ret = false;
 			break;
@@ -720,7 +723,7 @@ bool checkIPStatus()
 {
 	bool ret = false;
 	char buf[70];
-	vcomPrintf("try lock esp\r\n");
+	//vcomPrintf("try lock esp\r\n");
 	//xTaskNotify(espTaskHandle, '1', eSetValueWithoutOverwrite );
 
 	uartPrintf("AT+CIPSTATUS\r\n");
@@ -730,7 +733,7 @@ bool checkIPStatus()
 	//3 - connected
 	//4 - disconnected
 
-	while (waitForEspAnswerToBuf(buf, 5000, true) == true) {
+	while (waitForEspAnswerToBuf(buf, 100, false) == true) {
 		//vcomPrintf("AT+CIPSTATUS ret wait fail\r\n");
 		if (strcmp(buf, "STATUS:2\r\n") == 0){
 			vcomPrintf("IP status GOT IP\r\n");
@@ -822,7 +825,7 @@ void vEspTask(void *pvParameters)
 
 	//vTaskDelay(4000);
 
-	unLockEsp();
+	//unLockEsp();
 
 	char waitForCmdStr[] = "wait cmd\r\n";
 	vcomPrintf(waitForCmdStr);
@@ -852,12 +855,13 @@ checkAt:
 	vcomPrintf("wifi connected. try ping\r\n");
 
 	bool bPingRes = false;
+checkPing:
 	for(int i=0; i<5;i++){
 		bPingRes |= pingHost(hostIp[ssidInd]);
-		vTaskDelay(1000);
+		vTaskDelay(250);
 	}
 
-	char str[100];
+	char str[200];
 	if(bPingRes == false){
 		sprintf(str, "no ping to server IP %s\r\n", hostIp[ssidInd]);
 		vcomPrintf(str);
@@ -870,20 +874,74 @@ checkAt:
 	sprintf(str, "try to connect to server IP %s:23\r\n", hostIp[ssidInd]);
 	vcomPrintf(str);
 
+checkConnect:
 	if(connectToTcpHost(hostIp[ssidInd]) == true){
 		vcomPrintf("terminal connected\r\n");
 	}
 	else{
 		vcomPrintf("terminal connect error\r\n");
-		//break;
+		goto checkPing;
+	}
+
+	if(espSend("wo\r\n") == true){
+		vcomPrintf("wo send OK\r\n");
+	}
+	else{
+		vcomPrintf("wo send FAIL\r\n");
+		goto checkConnect;
 	}
 
 	while(checkIPStatus() == true){
 		vcomPrintf("check IP status OK\r\n");
 		bConnected = true;
+
+		if(waitForEspAnswerToBuf(str, 100, false) == true){
+			vcomPrintf(str);
+		}
+
+		if(xTaskNotifyWait( 0x00, ULONG_MAX, &ulNotifiedValue, 10000 ) == true){
+			if((ulNotifiedValue&EVENT_BUTTON_1_BIT) != 0){ //warm up
+				vcomPrintf("event but1\r\n");
+				if(espSend("but1\r\n") == true){
+					vcomPrintf("\"but1\" send OK\r\n");
+				}
+				else{
+					vcomPrintf("\"but1\" send FAIL\r\n");
+				}
+			}
+			else if((ulNotifiedValue&EVENT_BUTTON_2_BIT) != 0){
+				vcomPrintf("event but2\r\n");
+				if(espSend("but2\r\n") == true){
+					vcomPrintf("\"but2\" send OK\r\n");
+				}
+				else{
+					vcomPrintf("\"but2\" send FAIL\r\n");
+				}
+			}
+			else if((ulNotifiedValue&EVENT_BUTTON_CANCEL_BIT) != 0){
+				vcomPrintf("event but cancel\r\n");
+				if(espSend("cancel\r\n") == true){
+					vcomPrintf("\"cancel\" send OK\r\n");
+				}
+				else{
+					vcomPrintf("\"cancel\" send FAIL\r\n");
+				}
+			}
+			else if((ulNotifiedValue&EVENT_RECV_BYTE_BIT) != 0){
+				if(waitForEspAnswerToBuf(str, 100, false) == true){
+					vcomPrintf(str);
+				}
+				else{
+					vcomPrintf("rcv byte ev, but no data rcvd\r\n");
+				}
+
+			}
+		}
+
 	}
 	bConnected = false;
 	vcomPrintf("check IP status fail\r\n");
+
 
 	goto checkAt;
 
