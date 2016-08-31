@@ -898,6 +898,7 @@ checkConnect:
 		goto checkConnect;
 	vcomPrintf("check IP status OK\r\n");
 	bConnected = true;
+	xTaskNotify(mainTaskHandle, EVENT_BLINK_NORMAL_CMD, eSetBits );
 
 	//while(checkIPStatus() == true){
 	while(true){
