@@ -1,18 +1,13 @@
 #pragma once
 
 
-//events to main
+//events to ESP task
 #define EVENT_BUTTON_1_BIT 			0x0010
 #define EVENT_BUTTON_2_BIT 			0x0020
 #define EVENT_BUTTON_CANCEL_BIT 	0x0040
+#define EVENT_RECV_BYTE_BIT			0x0008
 #define EVENT_LIGHTOFFCMD_BIT 		0x0100
 
-
-//events to ESP task
-#define EVENT_SEND_BUT1_BIT			0x0001
-#define EVENT_SEND_BUT2_BIT			0x0002
-#define EVENT_SEND_CANCEL_BIT		0x0004
-#define EVENT_RECV_BYTE_BIT			0x0008
 
 #define EVENT_ESP_MASK				0x1f00
 

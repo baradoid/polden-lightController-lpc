@@ -202,7 +202,7 @@ static bool espReadStringByChar(char *recvStr, int *strLen, uint32_t to, TString
 				if(isIpdConfirm == false){
 					if(recvStr[0] == '+'){
 						if(rdInd >= 4){ //when recv "+IPD"
-							if(memcmp(recvStr, "+IPD", strlen("+IPD")) == 0){
+							if(memcmp(recvStr, "+IPD", 4) == 0){
 								isIpdConfirm = true;
 								//vcomPrintf(" ipd detected\r\n");
 							}
@@ -225,7 +225,7 @@ static bool espReadStringByChar(char *recvStr, int *strLen, uint32_t to, TString
 
 							pch = strtok(ipdTempStr, ",:");
 							for(int tokInd=0;pch != NULL;tokInd++){
-								if(tokInd == 2){
+								if(tokInd == 1){
 									payLoadLen = atoi(pch);
 									ipdDetectStrLen = payLoadLen + ipdPrefixLen;
 									//sprintf(tempStr, " len %d %d \r\n", payLoadLen, ipdDetectStrLen);
@@ -264,7 +264,7 @@ static bool waitForEspAnswerToBuf(const char *answStr, uint32_t toTicks, bool bT
 		return false;
 	}
 	if(bTrace == true){
-		snprintf(str, 150, "string>%s", recvStr);
+		snprintf(str, 150, "string> %d:%s", strLen, recvStr);
 		vcomPrintf(str);
 	}
 	strcpy(answStr, recvStr);
@@ -875,6 +875,7 @@ checkPing:
 	vcomPrintf(str);
 
 checkConnect:
+	bConnected = false;
 	if(connectToTcpHost(hostIp[ssidInd]) == true){
 		vcomPrintf("terminal connected\r\n");
 	}
@@ -891,17 +892,18 @@ checkConnect:
 		goto checkConnect;
 	}
 
-	while(checkIPStatus() == true){
-		vcomPrintf("check IP status OK\r\n");
-		bConnected = true;
+	if(checkIPStatus() == false)
+		goto checkConnect;
+	vcomPrintf("check IP status OK\r\n");
+	bConnected = true;
 
-		if(waitForEspAnswerToBuf(str, 100, false) == true){
-			vcomPrintf(str);
-		}
-
-		if(xTaskNotifyWait( 0x00, ULONG_MAX, &ulNotifiedValue, 10000 ) == true){
+	//while(checkIPStatus() == true){
+	while(true){
+		if(xTaskNotifyWait( ULONG_MAX, ULONG_MAX, &ulNotifiedValue, 250 ) == true){
+			//sprintf(str, "0x%x\r\n", ulNotifiedValue);
+			//vcomPrintf(str);
 			if((ulNotifiedValue&EVENT_BUTTON_1_BIT) != 0){ //warm up
-				vcomPrintf("event but1\r\n");
+				//vcomPrintf("event but1\r\n");
 				if(espSend("but1\r\n") == true){
 					vcomPrintf("\"but1\" send OK\r\n");
 				}
@@ -910,34 +912,47 @@ checkConnect:
 				}
 			}
 			else if((ulNotifiedValue&EVENT_BUTTON_2_BIT) != 0){
-				vcomPrintf("event but2\r\n");
+				//vcomPrintf("event but2\r\n");
 				if(espSend("but2\r\n") == true){
 					vcomPrintf("\"but2\" send OK\r\n");
 				}
 				else{
 					vcomPrintf("\"but2\" send FAIL\r\n");
+					goto checkConnect;
 				}
 			}
 			else if((ulNotifiedValue&EVENT_BUTTON_CANCEL_BIT) != 0){
-				vcomPrintf("event but cancel\r\n");
+				//vcomPrintf("event but cancel\r\n");
 				if(espSend("cancel\r\n") == true){
 					vcomPrintf("\"cancel\" send OK\r\n");
 				}
 				else{
 					vcomPrintf("\"cancel\" send FAIL\r\n");
+					goto checkConnect;
 				}
 			}
 			else if((ulNotifiedValue&EVENT_RECV_BYTE_BIT) != 0){
-				if(waitForEspAnswerToBuf(str, 100, false) == true){
+				while(waitForEspAnswerToBuf(str, 300, true) == true){
 					vcomPrintf(str);
+					if (strcmp(str, "CLOSED\r\n") == 0){
+						goto checkConnect;
+					}
+					else if(strcmp(str, "light ON\r\n") == 0){
+						vcomPrintf("\"light ON\" detected");
+					}
 				}
-				else{
+				/*else{
 					vcomPrintf("rcv byte ev, but no data rcvd\r\n");
-				}
+				}*/
 
 			}
 		}
-
+//		while(waitForEspAnswerToBuf(str, 250, true) == true){
+//			vcomPrintf(str);
+//			if (strcmp(str, "CLOSED\r\n") == 0){
+//				goto checkConnect;
+//			}
+//		}
 	}
 	bConnected = false;
 	vcomPrintf("check IP status fail\r\n");
