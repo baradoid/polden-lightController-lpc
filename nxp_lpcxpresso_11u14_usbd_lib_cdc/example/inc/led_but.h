@@ -9,3 +9,5 @@ void setButtonLedDelayFast();
 
 void turnOnRedLed();
 void turnOnGreenLed();
+void turnOnYellowLed();
+void turnOnPreviousLed();

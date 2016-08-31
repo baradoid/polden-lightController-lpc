@@ -6,8 +6,11 @@
 #define EVENT_BUTTON_2_BIT 			0x0020
 #define EVENT_BUTTON_CANCEL_BIT 	0x0040
 #define EVENT_RECV_BYTE_BIT			0x0008
-#define EVENT_LIGHTOFFCMD_BIT 		0x0100
+//#define EVENT_LIGHTOFFCMD_BIT 		0x0100
 
+//events to main task
+#define EVENT_LIGHTON_CMD	 		0x0001
+#define EVENT_LIGHTOFF_CMD	 		0x0002
 
 #define EVENT_ESP_MASK				0x1f00
 

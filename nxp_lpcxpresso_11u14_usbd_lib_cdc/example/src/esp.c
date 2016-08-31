@@ -932,13 +932,18 @@ checkConnect:
 				}
 			}
 			else if((ulNotifiedValue&EVENT_RECV_BYTE_BIT) != 0){
-				while(waitForEspAnswerToBuf(str, 300, true) == true){
+				while(waitForEspAnswerToBuf(str, 300, false) == true){
 					vcomPrintf(str);
 					if (strcmp(str, "CLOSED\r\n") == 0){
 						goto checkConnect;
 					}
 					else if(strcmp(str, "light ON\r\n") == 0){
-						vcomPrintf("\"light ON\" detected");
+						vcomPrintf("\"light ON\" detected\r\n");
+						xTaskNotify(mainTaskHandle, EVENT_LIGHTON_CMD, eSetBits);
+					}
+					else if(strcmp(str, "light OFF\r\n") == 0){
+						vcomPrintf("\"light OFF\" detected\r\n");
+						xTaskNotify(mainTaskHandle, EVENT_LIGHTOFF_CMD, eSetBits );
 					}
 				}
 				/*else{

@@ -136,10 +136,12 @@ void vLedTask(void *pvParameters)
 				butState = but1onState;
 			else if(b1DelayCounter > 200){
 				butState = longButState;
+				turnOnYellowLed();
 			}
 		}
 		else if(b1LastState == true){
 			butState = butOffState;
+			turnOnPreviousLed();
 		}
 
 
@@ -152,10 +154,12 @@ void vLedTask(void *pvParameters)
 				butState = but2onState;
 			else if(b2DelayCounter > 200){
 				butState = longButState;
+				turnOnYellowLed();
 			}
 		}
 		else if(b2LastState == true){
 			butState = butOffState;
+			turnOnPreviousLed();
 		}
 
 		b1LastState = b1CurState;
@@ -274,18 +278,33 @@ bool bFastBlink = false;
 
 typedef enum{
 	GREEN,
-	RED
+	RED,
+	YELLOW
 } TBLedEnumType;
 
 TBLedEnumType curBLedType=RED, nextBLedType=RED;
+TBLedEnumType prevBLedType = RED;
 void turnOnGreenLed()
 {
+	prevBLedType = curBLedType;
 	nextBLedType = GREEN;
 }
 
 void turnOnRedLed()
 {
+	prevBLedType = curBLedType;
 	nextBLedType = RED;
+}
+
+void turnOnYellowLed()
+{
+	prevBLedType = curBLedType;
+	nextBLedType = YELLOW;
+}
+
+void turnOnPreviousLed()
+{
+	nextBLedType = prevBLedType;
 }
 
 void setButtonLedDelayNormal()
@@ -358,6 +377,10 @@ void vButtonLedTask(void *pvParameters)
 		}
 		else if(curBLedType == RED){
 			setLedGLedLevel(0);
+			setLedRLedLevel(ledLevel);
+		}
+		else if(curBLedType == YELLOW){
+			setLedGLedLevel(ledLevel);
 			setLedRLedLevel(ledLevel);
 		}
 

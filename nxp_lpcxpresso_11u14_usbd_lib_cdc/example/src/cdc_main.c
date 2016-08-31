@@ -59,14 +59,18 @@ static void vMainTask(void *pvParameters)
 				if((ulNotifiedValue&EVENT_BUTTON_2_BIT) != 0){ //warm up
 					//vcomPrintf("But2. Esp send \"but2\" .\r\n");
 				}
-				else if((ulNotifiedValue&EVENT_BUTTON_1_BIT) != 0){
+				if((ulNotifiedValue&EVENT_BUTTON_1_BIT) != 0){
 					secondButPushState = 0;
 					//vcomPrintf("But1. Esp send \"but1\"\r\n");
 				}
-				else{
-					continue;
+				if((ulNotifiedValue&EVENT_LIGHTON_CMD) != 0){
+					vcomPrintf("\r\ncmd to turn ON light recvd. Process...\r\n");
+					turnOffRelay();
 				}
-
+				if((ulNotifiedValue&EVENT_LIGHTOFF_CMD) != 0){
+					vcomPrintf("turnOff cmd light recvd. Process...\r\n");
+					turnOnRelay();
+				}
 				continue;
 
 				if(secondButPushState == 1){
