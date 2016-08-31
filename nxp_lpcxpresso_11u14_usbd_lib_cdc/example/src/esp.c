@@ -856,6 +856,8 @@ checkAt:
 
 	bool bPingRes = false;
 checkPing:
+	bPingRes = false;
+	bIsPingable = false;
 	for(int i=0; i<5;i++){
 		bPingRes |= pingHost(hostIp[ssidInd]);
 		vTaskDelay(250);
@@ -899,7 +901,7 @@ checkConnect:
 
 	//while(checkIPStatus() == true){
 	while(true){
-		if(xTaskNotifyWait( ULONG_MAX, ULONG_MAX, &ulNotifiedValue, 250 ) == true){
+		if(xTaskNotifyWait( ULONG_MAX, ULONG_MAX, &ulNotifiedValue, 10000 ) == true){
 			//sprintf(str, "0x%x\r\n", ulNotifiedValue);
 			//vcomPrintf(str);
 			if((ulNotifiedValue&EVENT_BUTTON_1_BIT) != 0){ //warm up
@@ -946,11 +948,14 @@ checkConnect:
 						xTaskNotify(mainTaskHandle, EVENT_LIGHTOFF_CMD, eSetBits );
 					}
 				}
-				/*else{
-					vcomPrintf("rcv byte ev, but no data rcvd\r\n");
-				}*/
-
+				//else{
+					//vcomPrintf("rcv byte ev, but no data rcvd\r\n");
+				//}
 			}
+		}
+		else{
+			if(checkIPStatus() == false)
+				goto checkConnect;
 		}
 //		while(waitForEspAnswerToBuf(str, 250, true) == true){
 //			vcomPrintf(str);
