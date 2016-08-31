@@ -11,6 +11,8 @@
 //events to main task
 #define EVENT_LIGHTON_CMD	 		0x0001
 #define EVENT_LIGHTOFF_CMD	 		0x0002
+#define EVENT_BLINK_FAST_CMD 		0x0010
+#define EVENT_BLINK_NORMAL_CMD 		0x0020
 
 #define EVENT_ESP_MASK				0x1f00
 

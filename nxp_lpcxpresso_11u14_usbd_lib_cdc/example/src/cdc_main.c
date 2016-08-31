@@ -50,19 +50,16 @@ static void vMainTask(void *pvParameters)
 			//vcomPrintf(" --- connected \r\n");
 			//allowButtonsInput(); /* Enable interrupt in the NVIC */
 			turnOnGreenLed();
-			if(secondButPushState == 0)
-				setButtonLedDelayNormal();
-
 			if(xTaskNotifyWait( ULONG_MAX, ULONG_MAX, &ulNotifiedValue,  1000  ) == true){
 				//sprintf(str, "notify val %x\r\n", ulNotifiedValue);
 				//vcomPrintf(str);
-				if((ulNotifiedValue&EVENT_BUTTON_2_BIT) != 0){ //warm up
-					//vcomPrintf("But2. Esp send \"but2\" .\r\n");
-				}
-				if((ulNotifiedValue&EVENT_BUTTON_1_BIT) != 0){
-					secondButPushState = 0;
-					//vcomPrintf("But1. Esp send \"but1\"\r\n");
-				}
+//				if((ulNotifiedValue&EVENT_BUTTON_2_BIT) != 0){ //warm up
+//					//vcomPrintf("But2. Esp send \"but2\" .\r\n");
+//				}
+//				if((ulNotifiedValue&EVENT_BUTTON_1_BIT) != 0){
+//					secondButPushState = 0;
+//					//vcomPrintf("But1. Esp send \"but1\"\r\n");
+//				}
 				if((ulNotifiedValue&EVENT_LIGHTON_CMD) != 0){
 					vcomPrintf("\r\ncmd to turn ON light recvd. Process...\r\n");
 					turnOffRelay();
@@ -71,19 +68,27 @@ static void vMainTask(void *pvParameters)
 					vcomPrintf("turnOff cmd light recvd. Process...\r\n");
 					turnOnRelay();
 				}
+				if((ulNotifiedValue&EVENT_BLINK_FAST_CMD) != 0){
+					vcomPrintf("blink fast cmd light recvd. Process...\r\n");
+					setButtonLedDelayFast();
+				}
+				if((ulNotifiedValue&EVENT_BLINK_NORMAL_CMD) != 0){
+					vcomPrintf("blink normal cmd light recvd. Process...\r\n");
+					setButtonLedDelayNormal();
+				}
 				continue;
 
-				if(secondButPushState == 1){
-					vcomPrintf("second But pushed once\r\n");
-					continue;
-				}
-				secondButPushState = 0;
-				turnOnRedLed();
-
-				vcomPrintf("turnOff cmd light recvd. Process...\r\n");
-				turnOnRelay();
-
-				vcomPrintf("wait light ON cmd. start serv with 5 min timeout\r\n");
+//				if(secondButPushState == 1){
+//					vcomPrintf("second But pushed once\r\n");
+//					continue;
+//				}
+//				secondButPushState = 0;
+//				turnOnRedLed();
+//
+//				vcomPrintf("turnOff cmd light recvd. Process...\r\n");
+//				turnOnRelay();
+//
+//				vcomPrintf("wait light ON cmd. start serv with 5 min timeout\r\n");
 
 //				if(waitCommand(recvStr, 5*60*1000) == false){
 //					vcomPrintf("wait command error. Auto turn on.\r\n");
@@ -97,14 +102,14 @@ static void vMainTask(void *pvParameters)
 //					vcomPrintf(" expected \""CMD_LIGHT_ON"\". Auto turn on.\r\n");
 //				}
 
-				vcomPrintf("\r\ncmd to turn ON light recvd. Process...\r\n");
-
-
-				turnOffRelay();
+//				vcomPrintf("\r\ncmd to turn ON light recvd. Process...\r\n");
+//
+//
+//				turnOffRelay();
 			}
 		}
 		else{
-
+			turnOffRelay();
 			turnOnRedLed();
 			if(isConnected() == true){
 				vcomPrintf(" --- not pingable \r\n");

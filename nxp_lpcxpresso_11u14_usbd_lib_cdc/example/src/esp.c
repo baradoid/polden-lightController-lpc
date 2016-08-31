@@ -947,6 +947,15 @@ checkConnect:
 						vcomPrintf("\"light OFF\" detected\r\n");
 						xTaskNotify(mainTaskHandle, EVENT_LIGHTOFF_CMD, eSetBits );
 					}
+					else if(strcmp(str, "blink fast\r\n") == 0){
+						vcomPrintf("\"blink fast\" detected\r\n");
+						xTaskNotify(mainTaskHandle, EVENT_BLINK_FAST_CMD, eSetBits );
+					}
+					else if(strcmp(str, "blink normal\r\n") == 0){
+						vcomPrintf("\"blink normal\" detected\r\n");
+						xTaskNotify(mainTaskHandle, EVENT_BLINK_NORMAL_CMD, eSetBits );
+					}
+
 				}
 				//else{
 					//vcomPrintf("rcv byte ev, but no data rcvd\r\n");
