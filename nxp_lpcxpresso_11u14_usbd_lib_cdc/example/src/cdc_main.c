@@ -36,47 +36,45 @@ bool waitCmd()
 static void vMainTask(void *pvParameters)
 {
 	uint32_t ulNotifiedValue;
-	char str[60];
-	char recvStr[150];
-	bool ret;
 	int secondButPushState = 0;
 	vTaskDelay(1000);
-	//for(;;){
 
-	//}
 	for(;;){
 
-		if((isConnected() == true) && (isServerPingable() == true)){
-			//vcomPrintf(" --- connected \r\n");
-			//allowButtonsInput(); /* Enable interrupt in the NVIC */
-			turnOnGreenLed();
-			if(xTaskNotifyWait( ULONG_MAX, ULONG_MAX, &ulNotifiedValue,  1000  ) == true){
-				//sprintf(str, "notify val %x\r\n", ulNotifiedValue);
-				//vcomPrintf(str);
-//				if((ulNotifiedValue&EVENT_BUTTON_2_BIT) != 0){ //warm up
-//					//vcomPrintf("But2. Esp send \"but2\" .\r\n");
-//				}
-//				if((ulNotifiedValue&EVENT_BUTTON_1_BIT) != 0){
-//					secondButPushState = 0;
-//					//vcomPrintf("But1. Esp send \"but1\"\r\n");
-//				}
-				if((ulNotifiedValue&EVENT_LIGHTON_CMD) != 0){
-					vcomPrintf("\r\ncmd to turn ON light recvd. Process...\r\n");
-					turnOffRelay();
-				}
-				if((ulNotifiedValue&EVENT_LIGHTOFF_CMD) != 0){
-					vcomPrintf("turnOff cmd light recvd. Process...\r\n");
-					turnOnRelay();
-				}
-				if((ulNotifiedValue&EVENT_BLINK_FAST_CMD) != 0){
-					vcomPrintf("blink fast cmd light recvd. Process...\r\n");
-					setButtonLedDelayFast();
-				}
-				if((ulNotifiedValue&EVENT_BLINK_NORMAL_CMD) != 0){
-					vcomPrintf("blink normal cmd light recvd. Process...\r\n");
-					setButtonLedDelayNormal();
-				}
-				continue;
+		if(xTaskNotifyWait( ULONG_MAX, ULONG_MAX, &ulNotifiedValue,  1000  ) == true){
+			//sprintf(str, "notify val %x\r\n", ulNotifiedValue);
+			//vcomPrintf(str);
+			if((ulNotifiedValue&EVENT_LIGHTON_CMD) != 0){
+				vcomPrintf("\r\ncmd to turn ON light recvd. Process...\r\n");
+				turnOffRelay();
+			}
+			if((ulNotifiedValue&EVENT_LIGHTOFF_CMD) != 0){
+				vcomPrintf("turnOff cmd light recvd. Process...\r\n");
+				turnOnRelay();
+			}
+			if((ulNotifiedValue&EVENT_LIGHTON_FAST_CMD) != 0){
+				vcomPrintf("fast turnOn cmd light recvd. Process...\r\n");
+				fastTurnOffRelay();
+			}
+
+			if((ulNotifiedValue&EVENT_BLINK_FAST_CMD) != 0){
+				vcomPrintf("blink fast cmd light recvd. Process...\r\n");
+				setButtonLedDelayFast();
+			}
+			if((ulNotifiedValue&EVENT_BLINK_NORMAL_CMD) != 0){
+				vcomPrintf("blink normal cmd light recvd. Process...\r\n");
+				setButtonLedDelayNormal();
+			}
+			if((ulNotifiedValue&EVENT_SET_GREEN_CMD) != 0){
+				vcomPrintf("turn on green led\r\n");
+				turnOnGreenLed();
+			}
+			if((ulNotifiedValue&EVENT_SET_YELLOW_CMD) != 0){
+				vcomPrintf("turn on yellow led\r\n");
+				turnOnYellowLed();
+			}
+
+			continue;
 
 //				if(secondButPushState == 1){
 //					vcomPrintf("second But pushed once\r\n");
@@ -106,10 +104,16 @@ static void vMainTask(void *pvParameters)
 //
 //
 //				turnOffRelay();
-			}
+		}
+
+
+		if((isConnected() == true) && (isServerPingable() == true)){
+			//vcomPrintf(" --- connected \r\n");
+			//allowButtonsInput(); /* Enable interrupt in the NVIC */
+			//turnOnGreenLed();
 		}
 		else{
-			turnOffRelay();
+			fastTurnOffRelay();
 			turnOnRedLed();
 			if(isConnected() == true){
 				vcomPrintf(" --- not pingable \r\n");
@@ -122,7 +126,6 @@ static void vMainTask(void *pvParameters)
 			}
 		}
 		vTaskDelay(2*configTICK_RATE_HZ);
-
 	}
 }
 

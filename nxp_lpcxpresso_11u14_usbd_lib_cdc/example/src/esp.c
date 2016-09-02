@@ -557,7 +557,7 @@ bool setLocalIp(const char *ip)
 	sprintf(str, "AT+CIPSTA_CUR=\"%s\",\"192.168.0.1\",\"255.255.255.0\"\r\n", ip);
 	vcomPrintf(str);
 	uartPrintf(str);
-	if(waitForEspAnswerOk(3000, true) == false){
+	if(waitForEspAnswerOk(3000, false) == false){
 		//vcomPrintf("no answer on AT+CIPSTA_CUR="localIP"\r\n");
 		ret = false;
 	}
@@ -656,7 +656,7 @@ bool connectToTcpHost(const char *host)
 	vcomPrintf(buf);
 	uartPrintf(buf);
 	for (;;) {
-		if (waitForEspAnswerToBuf(buf, 25000, true) == false) {
+		if (waitForEspAnswerToBuf(buf, 25000, false) == false) {
 			//vcomPrintf("no AT+CWJAP_CUR? answer\r\n");
 			ret = false;
 			break;
@@ -835,6 +835,7 @@ void vEspTask(void *pvParameters)
 //	}
 
 
+	for(;;){
 checkAt:
 	vcomPrintf("Check AT\r\n");
 	while(sendAT() == false){
@@ -894,8 +895,8 @@ checkConnect:
 		goto checkConnect;
 	}
 
-	if(checkIPStatus() == false)
-		goto checkConnect;
+	//if(checkIPStatus() == false)
+	//	goto checkConnect;
 	vcomPrintf("check IP status OK\r\n");
 	bConnected = true;
 	xTaskNotify(mainTaskHandle, EVENT_BLINK_NORMAL_CMD, eSetBits );
@@ -944,6 +945,10 @@ checkConnect:
 						vcomPrintf("\"light ON\" detected\r\n");
 						xTaskNotify(mainTaskHandle, EVENT_LIGHTON_CMD, eSetBits);
 					}
+					else if(strcmp(str, "light ON fast\r\n") == 0){
+						vcomPrintf("\"light ON  fast\" detected\r\n");
+						xTaskNotify(mainTaskHandle, EVENT_LIGHTON_FAST_CMD, eSetBits);
+					}
 					else if(strcmp(str, "light OFF\r\n") == 0){
 						vcomPrintf("\"light OFF\" detected\r\n");
 						xTaskNotify(mainTaskHandle, EVENT_LIGHTOFF_CMD, eSetBits );
@@ -956,6 +961,14 @@ checkConnect:
 						vcomPrintf("\"blink normal\" detected\r\n");
 						xTaskNotify(mainTaskHandle, EVENT_BLINK_NORMAL_CMD, eSetBits );
 					}
+					else if(strcmp(str, "green\r\n") == 0){
+						vcomPrintf("\"green\" detected\r\n");
+						xTaskNotify(mainTaskHandle, EVENT_SET_GREEN_CMD, eSetBits );
+					}
+					else if(strcmp(str, "yellow\r\n") == 0){
+						vcomPrintf("\"yellow\" detected\r\n");
+						xTaskNotify(mainTaskHandle, EVENT_SET_YELLOW_CMD, eSetBits );
+					}
 
 				}
 				//else{
@@ -964,7 +977,10 @@ checkConnect:
 			}
 		}
 		else{
-			if(checkIPStatus() == false)
+			if(checkIPStatus() == true){
+				xTaskNotify(mainTaskHandle, EVENT_SET_GREEN_CMD, eSetBits );
+			}
+			else
 				goto checkConnect;
 		}
 //		while(waitForEspAnswerToBuf(str, 250, true) == true){
@@ -977,158 +993,6 @@ checkConnect:
 	bConnected = false;
 	vcomPrintf("check IP status fail\r\n");
 
-
-	goto checkAt;
-
-
-
-	for(;;){
-		if(xTaskNotifyWait( 0x00, ULONG_MAX, &ulNotifiedValue,  1000 ) == true){
-			lockEsp();
-			switch((char)ulNotifiedValue){
-				case 't':
-					uartPrintf("AT\r\n");
-					//readEspAnsOk();
-					break;
-//				case 'k':
-//					uartPrintf("AT+CIPSTATUS\r\n");
-//					break;
-				case 'e':
-					vcomPrintf("try to connect to 192.168.0.103:23\r\n");
-					uartPrintf("AT+CIPSTART=\"TCP\",\"192.168.0.103\",23\r\n");
-					if(waitForEspAnswerOk(10000, true) == false){
-						vcomPrintf("no answer\r\n");
-						break;
-					}
-					break;
-//				case 'o':
-//					uartPrintf("AT+CIPSEND=4\r\n2345\r\n");
-//					break;
-//				case 's':
-//
-//					vcomPrintf("start serv\r\n");
-//					waitCommand(1000000);
-//					break;
-				case 'p':
-					//uartPrintf("AT+CIFSR\r\n");
-					vcomPrintf("AT+CIPSEND ping\r\n");
-					uartPrintf("AT+CIPSEND=4\r\nping\r\n");
-					if(waitForEspAnswerOk(10000, true) == false){
-						vcomPrintf("no answer\r\n");
-						break;
-					}
-					break;
-//				case 'c':
-//					vcomPrintf("try to connect to TL-WR842ND\r\n");
-//					//uartPrintf("AT+CWJAP=\"Polden\",\"studio123\"\r\n");
-//					uartPrintf("AT+CWJAP=\"TL-WR842ND\",\"kkkknnnn\"\r\n");
-//					if(waitForEspAnswerOk(10000, false) == false){
-//						vcomPrintf("no answer\r\n");
-//						break;
-//					}
-//					vcomPrintf("connected to TL-WR842ND\r\n");
-//
-//					break;
-//				case 'u':
-//					uartPrintf("AT+CIUPDATE\r\n");
-//					if(waitForEspAnswerOk(100000, true) == false){
-//						vcomPrintf("no answer on AT+CIPUPDATE\r\n");
-//						break;
-//					}
-//					break;
-
-//				case 'l':
-//					uartPrintf("AT+CWLAP\r\n");
-//					break;
-//				case 'v':
-//					uartPrintf("AT+GMR\r\n");
-//					break;
-//				case '0':
-//					uartPrintf("AT+CWMODE_CUR\r\n");
-//					break;
-				case '1':
-//					if(sendCommand("1234") == true){
-//						vcomPrintf("start serv with 3 min timeout\r\n");
-//						waitCommand(3*60*1000);
-//					}
-//					else{
-//						if(mainTaskHandle != NULL){
-//							xTaskNotify(mainTaskHandle, EVENT_ESP_ERR_BIT, eSetBits);
-//						}
-//					}
-					break;
-				case '2':
-					espSendCommand(hostIp[ssidInd], serverPort, "2345", 10000);
-//					strcpy(&g_rxBuff[0], "AT+CIPSERVER=1,1488\r\n");
-//					uartPrintf("AT+CIPSERVER=1,1488\r\n");
-					break;
-
-				default:
-					uartPrintf("AT\r\n");
-			}
-			unLockEsp();
-			vcomPrintf(waitForCmdStr);
-		}
-		else{
-			lockEsp();
-
-			if(bConnected == true){
-				//vcomPrintf("try ping server\r\n");
-//				if(pingTerminal() == false){
-//					vcomPrintf("ping terminal fail\r\n");
-
-//					if(pingHost(hostIp[ssidInd]) == false){
-//						bIsPingable = false;
-//						vcomPrintf("no ping to host\r\n");
-//						if(isWifiConnected() == false){
-//							vcomPrintf("wifi not connected. Check ESP\r\n");
-//							bConnected = false;
-//							if(sendAT() == false){
-//								vcomPrintf("ESP fail\r\n");
-//							}
-//							else{
-//								vcomPrintf("ESP OK\r\n");
-//							}
-//						}
-//					}
-//					else{
-//						bIsPingable = true;
-//					}
-//				}
-//				else{
-//					vcomPrintf("ping terminal ok\r\n");
-//				}
-			}
-			else{
-				vcomPrintf("try to connect to wifi\r\n");
-
-				ret = false;
-				ret = connectApList();
-				if(ret == true){
-					//vcomPrintf("connected to\r\n");
-
-					vcomPrintf("try to connect to 192.168.0.103:23\r\n");
-					uartPrintf("AT+CIPSTART=\"TCP\",\"192.168.0.103\",23\r\n");
-					if(waitForEspAnswerOk(10000, true) == true){
-						vcomPrintf("terminal connected\r\n");
-					}
-					else{
-						vcomPrintf("no answer\r\n");
-						//break;
-					}
-				}
-				else{
-					vcomPrintf("fail. Check ESP\r\n");
-					if(sendAT() == true){
-						vcomPrintf("ESP OK\r\n");
-					}
-					else{
-						vcomPrintf("no AT answer\r\n");
-					}
-				}
-			}
-
-			unLockEsp();
-		}
 	}
+
 }

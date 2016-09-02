@@ -150,7 +150,6 @@ static uint8_t g_rxBuff[256];
 void vVcomTask(void *pvParameters)
 {
 	uint32_t prompt = 0, rdCnt = 0;
-	bool bRelayState = false;
 
 	for(;;){
 		/* Check if host has connected and opened the VCOM port */
@@ -170,24 +169,21 @@ void vVcomTask(void *pvParameters)
 			if (rdCnt > 0) {
 				char s = g_rxBuff[0];
 				switch(s){
-				case 'b':
-					sprintf(g_rxBuff, "rel %d\r\n", bRelayState);
-
-					vcomPrintf(g_rxBuff);
-					if(bRelayState == true){
-						turnOffRelay();
-					}
-					else{
-						turnOnRelay();
-
-					}
-					bRelayState = !bRelayState;
+				case 'e':
+					xTaskNotify(mainTaskHandle, EVENT_LIGHTON_CMD, eSetBits);
 					break;
-
-				case 'c':
-
+				case 'd':
+					xTaskNotify(mainTaskHandle, EVENT_LIGHTOFF_CMD, eSetBits );
 					break;
-
+				case 'f':
+					xTaskNotify(mainTaskHandle, EVENT_LIGHTON_FAST_CMD, eSetBits);
+					break;
+				case 'g':
+					xTaskNotify(mainTaskHandle, EVENT_SET_GREEN_CMD, eSetBits );
+					break;
+				case 'y':
+					xTaskNotify(mainTaskHandle, EVENT_SET_YELLOW_CMD, eSetBits );
+					break;
 //				case '+':
 //					ledLev++;
 //					setLedLevel(ledLev);
@@ -200,32 +196,6 @@ void vVcomTask(void *pvParameters)
 //					sprintf(g_rxBuff, "ledLev %d\r\n", ledLev);
 //					vcomPrintf(g_rxBuff);
 //					break;
-
-				case 'e':
-				case 's':
-				case 'p':
-				case 'u':
-				case '1':
-				case '2':
-					if(espTaskHandle != NULL){
-						snprintf(g_rxBuff, 256, "try %c\r\n", s);
-						vcomPrintf(g_rxBuff);
-						xTaskNotify(espTaskHandle, s, eSetValueWithoutOverwrite );
-					}
-					else{
-						//vcomPrintf("espTaskHandle NULL\r\n");
-					}
-					break;
-
-				case '5':
-					xTaskNotify(mainTaskHandle, 25, eSetValueWithoutOverwrite );
-					break;
-				case '6':
-					xTaskNotify(mainTaskHandle, 11, eSetValueWithoutOverwrite );
-					break;
-				case '7':
-					xTaskNotify(mainTaskHandle, 10, eSetValueWithoutOverwrite );
-					break;
 
 				}
 				g_rxBuff[0]=0;

@@ -38,11 +38,20 @@ void turnOnRelay()
 		vTaskDelay(configTICK_RATE_HZ);
 	}
 }
+
 void turnOffRelay()
 {
 	for(int i=7; i>=0; i--){
 		relaySwitch(i, false);
 		vTaskDelay(configTICK_RATE_HZ);
+	}
+}
+
+void fastTurnOffRelay()
+{
+	for(int i=7; i>=0; i--){
+		relaySwitch(i, false);
+		vTaskDelay(configTICK_RATE_HZ/10);
 	}
 }
 
