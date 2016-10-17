@@ -28,6 +28,7 @@ TaskHandle_t  butTaskHandle = NULL, ledButTaskHandle = NULL;
 /* System oscillator rate and clock rate on the CLKIN pin */
 const uint32_t OscRateIn = 12000000;
 
+TickType_t lightOffTime = 0;
 bool waitCmd()
 {
 
@@ -51,6 +52,7 @@ static void vMainTask(void *pvParameters)
 			if((ulNotifiedValue&EVENT_LIGHTOFF_CMD) != 0){
 				vcomPrintf("turnOff cmd light recvd. Process...\r\n");
 				turnOnRelay();
+				lightOffTime = xTaskGetTickCount();
 			}
 			if((ulNotifiedValue&EVENT_LIGHTON_FAST_CMD) != 0){
 				vcomPrintf("fast turnOn cmd light recvd. Process...\r\n");
@@ -113,7 +115,6 @@ static void vMainTask(void *pvParameters)
 			//turnOnGreenLed();
 		}
 		else{
-			fastTurnOffRelay();
 			turnOnRedLed();
 			if(isConnected() == true){
 				vcomPrintf(" --- not pingable \r\n");
@@ -124,6 +125,9 @@ static void vMainTask(void *pvParameters)
 				vcomPrintf(" --- not connected \r\n");
 				setButtonLedDelayFast();
 			}
+		}
+		if( (xTaskGetTickCount() - lightOffTime) > (1000*60*4) ){
+			fastTurnOffRelay();
 		}
 		vTaskDelay(2*configTICK_RATE_HZ);
 	}

@@ -770,25 +770,29 @@ void vEspTask(void *pvParameters)
 
 	initUart();
 
+
+restartEsp:
+	uartPrintf("AT+RST\r\n");
+	if(waitForEspAnswerOk(300, false) == false){
+//		vcomPrintf("restart without OK\r\n");
+	}
+
+	else {
+//		vcomPrintf("restart with OK\r\n");
+	}
+
 	vTaskDelay(2000);
 	uartPrintf("ATE0\r\n");
 	if(waitForEspAnswerOk(300, false) == false){
 		vcomPrintf("ATE0 no answer\r\n");
 	}
 
-	vcomPrintf("check to lazy OK\r\n");
-	if(waitForEspAnswerOk(2000, true) == false){
-		vcomPrintf(" --- false\r\n");
-	}
 
-	vcomPrintf("check to lazy OK\r\n");
-	if(waitForEspAnswerOk(2000, true) == false){
-		vcomPrintf(" --- false\r\n");
-	}
-
-	vcomPrintf("check to lazy OK\r\n");
-	if(waitForEspAnswerOk(2000, true) == false){
-		vcomPrintf(" --- false\r\n");
+	for(int i=0; i<3; i++){
+		vcomPrintf("check to lazy OK\r\n");
+		if(waitForEspAnswerOk(2000, true) == false){
+			vcomPrintf(" --- false\r\n");
+		}
 	}
 
 	uartPrintf("AT+GMR\r\n");
@@ -981,7 +985,7 @@ checkConnect:
 				xTaskNotify(mainTaskHandle, EVENT_SET_GREEN_CMD, eSetBits );
 			}
 			else
-				goto checkConnect;
+				goto restartEsp;
 		}
 //		while(waitForEspAnswerToBuf(str, 250, true) == true){
 //			vcomPrintf(str);
